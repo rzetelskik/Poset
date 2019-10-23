@@ -10,27 +10,21 @@ using ElementsRelated = std::unordered_set<ElementID>;
 using Poset = std::map<ElementID, std::pair<ElementsRelated, ElementsRelated>>;
 using PosetMap = std::map<PosetID, Poset>;
 
-PosetMap* newPosetMap(){
-    PosetMap ans;
-    return &ans;
-}
 PosetMap& posetMap(){
-    static PosetMap* map = newPosetMap();
-    PosetMap* ans = map;
-    return *ans;
+    static PosetMap ans;
+    return ans;
 }
 
 PosetID newPosetID(){
     static PosetID id = 0;
-    PosetID ans = id;
     id++;
-    return ans;
+    return id;
 }
 
 unsigned long poset_new(){
     PosetID id = newPosetID();
     Poset poset;
-    posetMap().insert(id, poset);
+    posetMap().insert(std::pair<PosetID , Poset >(id, poset));
     return id;
 }
 
@@ -89,7 +83,17 @@ void poset_clear(unsigned long id);
  oraz relacje między nimi, a w przeciwnym przypadku nic nie robi.*/
 
 int main() {
-    std::cout << ' ' << poset_new();
+    //std::cout << ' ' << poset_new();
+
+    /*PosetID id = 0;
+    Poset poset;
+    std::cout << posetMap().size();
+    posetMap().insert(std::pair<PosetID, Poset>(id, poset));
+    std::cout << '\n' << posetMap().size();
+    posetMap().clear();
+    std::cout << '\n' << posetMap().size();*/
+
+
 
     return 0;
 }
