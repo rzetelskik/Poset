@@ -5,7 +5,7 @@ int main() {
 
     unsigned long poset_new(void);
 
-   /* Tworzy nowy poset i zwraca jego identyfikator.*/
+   /* Tworzy nowy poset i zwraca jego identyfikator. */
 
     void poset_delete(unsigned long id);
 
