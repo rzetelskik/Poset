@@ -30,12 +30,22 @@ unsigned long poset_new(){
 
 /* Tworzy nowy poset i zwraca jego identyfikator. */
 
-void poset_delete(unsigned long id);
+void poset_delete(unsigned long id) {
+    auto it = posetMap().find(id);
+    if (it != posetMap().end()){
+        posetMap().erase(it); // TODO kwestia usuniecia całego posetu z pamięci
+    }
 
 /*  Jeżeli istnieje poset o identyfikatorze id, usuwa go, a w przeciwnym
   przypadku nic nie robi.
   */
-size_t poset_size(unsigned long id);
+}
+size_t poset_size(unsigned long id){
+    auto it = posetMap().find(id);
+    if (it != posetMap().end()){
+
+    }
+}
 
 /*Jeżeli istnieje poset o identyfikatorze id, to wynikiem jest liczba jego
 elementów, a w przeciwnym przypadku 0.*/
