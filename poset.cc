@@ -7,7 +7,8 @@
 using poset_id_t = unsigned long;
 using element_id_t = unsigned long long;
 using related_elements_t = std::unordered_set<element_id_t>;
-using poset_t = std::pair<std::unordered_map<std::string, element_id_t>, std::unordered_map<element_id_t, std::pair<related_elements_t, related_elements_t>>>;
+using dictionary_t = std::unordered_map<std::string, element_id_t>;
+using poset_t = std::pair<dictionary_t, std::unordered_map<element_id_t, std::pair<related_elements_t, related_elements_t>>>;
 using poset_map_t = std::map<poset_id_t, poset_t>;
 
 poset_map_t& poset_map() {
