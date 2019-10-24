@@ -39,13 +39,6 @@ unsigned long poset_new() {
     return id;
 }
 
-//void poset_delete(unsigned long id) {
-//    auto it = poset_map().find(id);
-//    if (it != poset_map().end()){
-//        poset_map().erase(it); // TODO kwestia usuniecia całego posetu z pamięci
-//    }
-//}
-
 size_t poset_size(unsigned long id) {
     auto it = poset_map().find(id);
     return ((it != poset_map().end()) ? it->second.first.size() : 0);
@@ -101,7 +94,67 @@ bool poset_insert(unsigned long id, char const *value) {
     return true;
 }
 
-bool poset_remove(unsigned long id, char const *value);
+void remove_relation(element_id_t element1_id,element_id_t  element2_id,poset_graph_t poset_graph) {
+    auto it1 = poset_graph.find(element1_id);
+    assert(it1 != poset_graph.end());
+
+    related_elements_t successors = it1->second.second;
+    successors.erase(element2_id);
+
+    it1 = poset_graph.find(element2_id);
+    assert(it1 != poset_graph.end());
+
+    related_elements_t predecessor = it1->second.first;
+    successors.erase(element1_id);
+}
+
+bool remove_from_graph(element_id_t element_id, poset_graph_t poset_graph) {
+    auto it1 = poset_graph.find(element_id);
+    if (it1 == poset_graph.end())
+        return false;
+
+    related_elements_t predecessors =  it1->second.first;
+    related_elements_t successors =  it1->second.second;
+
+    // bool predecessor;
+    for (auto p_id:predecessors) {
+        /*auto it2 = poset_graph.find(p);
+        assert(it2 != poset_graph.end());
+        predecessor = true;
+        remove_x_from_elements_related_to_y(element_id, p, predecessor, poset_graph);*/
+        remove_relation(element_id, p_id, poset_graph);
+    }
+    for (auto s_id:successors) {
+        /*auto it3 = poset_graph.find(s_id);
+        assert(it3 != poset_graph.end());
+        predecessor = false;
+        remove_x_from_elements_related_to_y(element_id, s_id, predecessor, poset_graph);*/
+        remove_relation(element_id, s_id, poset_graph);
+    }
+    poset_graph.erase(element_id);
+    return true;
+}
+
+
+bool poset_remove(unsigned long id, char const *value) {
+    if (!is_cstring_valid(value)) return false;
+    std::string element(value);
+
+    auto it1 = poset_map_t().find(id);
+    if (it1 == poset_map_t().end()) {
+        return false;
+    }
+
+    poset_graph_t poset_graph = it1->second.second;
+    dictionary_t dictionary = it1->second.first;
+
+    auto it2 = dictionary.find(element);
+    if (it2 == dictionary.end()) return false;
+
+    element_id_t element_id = it2->second;
+
+    return remove_from_graph(element_id, poset_graph);
+}
 
 bool are_elements_related(poset_t& poset, element_id_t first_id, element_id_t second_id) {
     auto it = poset.second.find(first_id);
@@ -162,7 +215,29 @@ bool poset_add(unsigned long id, char const *value1, char const *value2) {
     return true;
 }
 
-bool poset_del(unsigned long id, char const *value1, char const *value2);
+bool poset_del(unsigned long id, char const *value1, char const *value2) {
+    if (!is_cstring_valid(value1) || !is_cstring_valid(value2)) return false;
+    std::string element1(value1), element2(value2);
+
+    auto it1 = poset_map_t().find(id);
+    if (it1 == poset_map_t().end()) return false;
+    
+    poset_graph_t poset_graph = it1->second.second;
+    dictionary_t dictionary = it1->second.first;
+
+    auto it2 = dictionary.find(element1);
+    if (it2 == dictionary.end()) return false;
+    
+    element_id_t element1_id = it2->second;
+
+    auto it3 = dictionary.find(element1);
+    if (it3 == dictionary.end()) return false;
+
+    element_id_t element2_id = it3->second;
+
+    remove_relation(element1_id, element2_id, poset_graph);
+    return true;
+}
 
 bool poset_test(unsigned long id, char const *value1, char const *value2) {
     auto poset_opt = get_poset(id);
