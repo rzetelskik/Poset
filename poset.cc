@@ -43,12 +43,10 @@ unsigned long poset_new() {
 //    }
 //}
 
-//size_t poset_size(unsigned long id){
-//    auto it = poset_map().find(id);
-//    if (it != poset_map().end()){
-//
-//    }
-//}
+size_t poset_size(unsigned long id) {
+    auto it = poset_map().find(id);
+    return ((it != poset_map().end()) ? it->second.first.size() : 0);
+}
 
 std::optional<element_id_t> get_element_id_from_dictionary(const dictionary_t& dictionary, const std::string& name) {
     auto it = dictionary.find(name);
