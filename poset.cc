@@ -39,14 +39,6 @@ unsigned long poset_new() {
     return id;
 }
 
-//void poset_delete(unsigned long id) {
-//    auto it = poset_map().find(id);
-//    if (it != poset_map().end()){
-//        poset_map().erase(it); // TODO kwestia usuniecia całego posetu z pamięci
-//    }
-//}
-
-
 size_t poset_size(unsigned long id) {
     auto it = poset_map().find(id);
     return ((it != poset_map().end()) ? it->second.first.size() : 0);
@@ -55,7 +47,6 @@ size_t poset_size(unsigned long id) {
 bool is_cstring_valid(char const *value) {
     return (value != nullptr);
 }
-
 
 std::optional<element_id_t> get_element_id_from_dictionary(const dictionary_t& dictionary, const std::string& name) {
     auto it = dictionary.find(name);
@@ -104,7 +95,6 @@ bool poset_insert(unsigned long id, char const *value) {
 }
 
 void remove_relation(element_id_t element1_id,element_id_t  element2_id,poset_graph_t poset_graph) {
-
     auto it1 = poset_graph.find(element1_id);
     assert(it1 != poset_graph.end());
 
@@ -116,12 +106,9 @@ void remove_relation(element_id_t element1_id,element_id_t  element2_id,poset_gr
 
     related_elements_t predecessor = it1->second.first;
     successors.erase(element1_id);
-
-
 }
 
 bool remove_from_graph(element_id_t element_id, poset_graph_t poset_graph) {
-
     auto it1 = poset_graph.find(element_id);
     if (it1 == poset_graph.end())
         return false;
@@ -150,9 +137,7 @@ bool remove_from_graph(element_id_t element_id, poset_graph_t poset_graph) {
 
 
 bool poset_remove(unsigned long id, char const *value) {
-
-    if (value == nullptr)
-        return false;
+    if (!is_cstring_valid(value)) return false;
     std::string element(value);
 
     auto it1 = poset_map_t().find(id);
@@ -164,17 +149,11 @@ bool poset_remove(unsigned long id, char const *value) {
     dictionary_t dictionary = it1->second.first;
 
     auto it2 = dictionary.find(element);
-    if (it2 == dictionary.end())
-        return false;
+    if (it2 == dictionary.end()) return false;
 
     element_id_t element_id = it2->second;
 
     return remove_from_graph(element_id, poset_graph);
-
-    /*Jeżeli istnieje poset o identyfikatorze id i element value należy do tego
-        zbioru, to usuwa element ze zbioru oraz usuwa wszystkie relacje tego
-    elementu, a w przeciwnym przypadku nic nie robi. Wynikiem jest true, gdy
-    element został usunięty, a false w przeciwnym przypadku.*/
 }
 
 bool are_elements_related(poset_t& poset, element_id_t first_id, element_id_t second_id) {
@@ -236,31 +215,23 @@ bool poset_add(unsigned long id, char const *value1, char const *value2) {
     return true;
 }
 
-
-
-bool poset_del(unsigned long id, char const *value1, char const *value2){
-
-    if (value1 == nullptr || value2 == nullptr)
-        return false;
-    std::string element1(value1);
-    std::string element2(value2);
+bool poset_del(unsigned long id, char const *value1, char const *value2) {
+    if (!is_cstring_valid(value1) || !is_cstring_valid(value2)) return false;
+    std::string element1(value1), element2(value2);
 
     auto it1 = poset_map_t().find(id);
-    if (it1 == poset_map_t().end()) {
-        return false;
-    }
-
+    if (it1 == poset_map_t().end()) return false;
+    
     poset_graph_t poset_graph = it1->second.second;
     dictionary_t dictionary = it1->second.first;
 
     auto it2 = dictionary.find(element1);
-    if (it2 == dictionary.end())
-        return false;
+    if (it2 == dictionary.end()) return false;
+    
     element_id_t element1_id = it2->second;
 
     auto it3 = dictionary.find(element1);
-    if (it3 == dictionary.end())
-        return false;
+    if (it3 == dictionary.end()) return false;
 
     element_id_t element2_id = it3->second;
 
