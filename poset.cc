@@ -89,7 +89,6 @@ bool poset_insert(unsigned long id, char const *value) {
     return true;
 }
 
-
 void remove_relation(element_id_t element1_id,element_id_t  element2_id,poset_graph_t poset_graph) {
 
     auto it1 = poset_graph.find(element1_id);
