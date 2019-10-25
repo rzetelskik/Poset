@@ -201,9 +201,9 @@ bool jnp1::poset_remove(unsigned long id, char const *value) {
     if (!element_id.has_value()) return false;
 
     remove_from_poset_graph(poset, element_id.value());
-    // TODO removed from dictionary
-    // nie da się bo nie da sie wyszukac elementu w dictionary po id.
-    // tzn że w dictionary są elementu których już nie ma w porządku
+
+    dictionary_t dictionary = poset.first;
+    dictionary.erase(std::string(value));
 
     return true;
 }
