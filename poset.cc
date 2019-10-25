@@ -132,6 +132,8 @@ namespace {
 
 
         remove_relation_unconditionally(poset, element1_id, element2_id);
+
+        return true;
     }
 
     void remove_from_poset_graph(poset_t& poset, element_id_t element_id) {
@@ -248,9 +250,7 @@ bool jnp1::poset_del(unsigned long id, char const *value1, char const *value2) {
     if (!element1_id.has_value() || !element2_id.has_value() ||
         !are_elements_related(poset, element1_id.value(), element2_id.value())) return false;
 
-    remove_relation(poset, element1_id.value(), element2_id.value());
-
-    return true;
+    return remove_relation(poset, element1_id.value(), element2_id.value());
 }
 
 bool jnp1::poset_test(unsigned long id, char const *value1, char const *value2) {
