@@ -1,14 +1,11 @@
 #include "poset.h"
 #include <iostream>
-#include <utility>
 #include <vector>
 #include <string>
 #include <unordered_set>
 #include <unordered_map>
 #include <functional>
 #include <cassert>
-#include <set>
-
 
 namespace {
     using poset_id_t = unsigned long;
@@ -103,7 +100,7 @@ namespace {
 
         add_relation(poset, element1_id, element2_id);
     }
-
+    //TODO przemyśleć zmiane nazewnictwa
     bool remove_relation_unconditionally(poset_graph_t& poset_graph, element_id_t element1_id, element_id_t element2_id) {
         auto it = poset_graph.find(element1_id);
 
@@ -115,6 +112,7 @@ namespace {
         related_elements_t& predecessors = it->second.first;
         predecessors.erase(element1_id);
     }
+
 
     bool remove_relation(poset_t& poset, element_id_t element1_id, element_id_t element2_id) {
         poset_graph_t& poset_graph = poset.second;
@@ -137,15 +135,20 @@ namespace {
         return true;
     }
 
-    void remove_relations_between(poset_graph_t& poset_graph, element_id_t element_id, related_elements_t& related_elements, bool predecessors){
+    enum Related_elements_enum {PREDECESSORS, SUCCESSORS};
+
+    void remove_relations_between(poset_graph_t& poset_graph, element_id_t element_id, related_elements_t& related_elements,
+            enum Related_elements_enum related_elements_enum) {
         std::unordered_set<element_id_t> tmp_set = related_elements;
 
         auto it = tmp_set.begin();
         while (it != tmp_set.end()) {
             element_id_t related_element_id = *it;
 
-            if(predecessors) remove_relation_unconditionally(poset_graph, related_element_id, element_id);
-            else remove_relation_unconditionally(poset_graph, element_id, related_element_id);
+            if(related_elements_enum == PREDECESSORS)
+                remove_relation_unconditionally(poset_graph, related_element_id, element_id);
+            else
+                remove_relation_unconditionally(poset_graph, element_id, related_element_id);
 
             it = tmp_set.erase(it);
         }
@@ -158,10 +161,8 @@ namespace {
         related_elements_t& predecessors = it1->second.first;
         related_elements_t& successors = it1->second.second;
 
-        bool from_predecessors = true;
-        remove_relations_between(poset_graph, element_id, predecessors, from_predecessors);
-        from_predecessors = false;
-        remove_relations_between(poset_graph, element_id, successors, from_predecessors);
+        remove_relations_between(poset_graph, element_id, predecessors, PREDECESSORS);
+        remove_relations_between(poset_graph, element_id, successors, SUCCESSORS);
 
         poset_graph.erase(element_id);
     }
@@ -211,7 +212,7 @@ bool jnp1::poset_remove(unsigned long id, char const *value) {
     remove_element_from_poset_graph(poset, element_id.value());
 
     dictionary_t& dictionary = poset.first;
-    dictionary.erase(std::string (value));
+    dictionary.erase(std::string(value));
     return true;
 }
 
