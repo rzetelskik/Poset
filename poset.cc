@@ -103,17 +103,35 @@ namespace {
         add_relation(poset, element1_id, element2_id);
     }
 
-    void remove_relation(poset_t& poset, element_id_t element1_id, element_id_t element2_id) {
-        //TODO sprawdzanie czy nie zaburzy relacji (przechodniosc)
-        auto it = poset.second.find(element1_id);
+    bool remove_relation_unconditionally(poset_t& poset, element_id_t element1_id, element_id_t element2_id) {
 
-        related_elements_t& successors = it->second.second;
+        auto it3 = poset.second.find(element1_id);
+
+        related_elements_t& successors = it3->second.second;
         successors.erase(element2_id);
 
-        it = poset.second.find(element2_id);
+        it3 = poset.second.find(element2_id);
 
-        related_elements_t& predecessors = it->second.first;
+        related_elements_t& predecessors = it3->second.first;
         predecessors.erase(element1_id);
+    }
+
+    bool remove_relation(poset_t &poset, element_id_t element1_id, element_id_t element2_id) {
+
+        poset_graph_t &poset_graph = poset.second;
+
+        for (auto const &el:poset_graph) {
+            related_elements_t el_predecessors = el.second.first;
+            related_elements_t el_successors = el.second.second;
+            auto it1 = el_predecessors.find(element1_id);
+            auto it2 = el_successors.find(element2_id);
+            if (it1 != el_predecessors.end() && it2 != el_successors.end()) { // removing this relation will
+                return false;
+            }
+        }
+
+
+        remove_relation_unconditionally(poset, element1_id, element2_id);
     }
 
     void remove_from_poset_graph(poset_t& poset, element_id_t element_id) {
@@ -127,14 +145,14 @@ namespace {
             assert(it2 != poset_graph.end());
             predecessor = true;
             remove_x_from_elements_related_to_y(element_id, p, predecessor, poset_graph);*/
-            remove_relation(poset, element_id, p_id);
+            remove_relation_unconditionally(poset, element_id, p_id);
         }
         for (auto s_id: successors) {
             /*auto it3 = poset_graph.find(s_id);
             assert(it3 != poset_graph.end());
             predecessor = false;
             remove_x_from_elements_related_to_y(element_id, s_id, predecessor, poset_graph);*/
-            remove_relation(poset, element_id, s_id);
+            remove_relation_unconditionally(poset, element_id, s_id);
         }
 
         poset.second.erase(element_id);
@@ -183,7 +201,9 @@ bool jnp1::poset_remove(unsigned long id, char const *value) {
     if (!element_id.has_value()) return false;
 
     remove_from_poset_graph(poset, element_id.value());
-    //TODO remove from dictionary
+    // TODO removed from dictionary
+    // nie da się bo nie da sie wyszukac elementu w dictionary po id.
+    // tzn że w dictionary są elementu których już nie ma w porządku
 
     return true;
 }
