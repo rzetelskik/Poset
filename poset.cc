@@ -16,6 +16,11 @@ namespace {
     using poset_t = std::pair<dictionary_t, poset_graph_t>;
     using poset_map_t = std::unordered_map<poset_id_t, poset_t>;
 
+    enum relation_order_e {
+        PREDECESSING,
+        SUCCESSING
+    };
+
     poset_map_t& poset_map() {
         static poset_map_t poset_map;
         return poset_map;
@@ -54,11 +59,15 @@ namespace {
         return std::nullopt;
     }
 
-    element_id_t insert_element_into_dictionary(dictionary_t& dictionary, const std::string& name) {
-        element_id_t id = get_new_element_id();
-        dictionary.insert({name, id});
+    element_id_t insert_element_into_dictionary(dictionary_t& dictionary, const std::string& element_name) {
+        element_id_t element_id = get_new_element_id();
+        dictionary.insert({element_name, element_id});
 
-        return id;
+        return element_id;
+    }
+
+    void remove_element_from_dictionary(dictionary_t& dictionary, const std::string& element_name) {
+        dictionary.erase(element_name);
     }
 
     void insert_element_into_poset_graph(poset_graph_t& poset_graph, element_id_t element_id) {
@@ -75,12 +84,12 @@ namespace {
 
     void add_relation(poset_t& poset, element_id_t element1_id, element_id_t element2_id) {
         auto it = poset.second.find(element1_id);
-        related_elements_t& first_successors = it->second.second;
-        first_successors.insert(element2_id);
+        related_elements_t& element1_successors = it->second.second;
+        element1_successors.insert(element2_id);
 
         it = poset.second.find(element2_id);
-        related_elements_t& second_predecessors = it->second.first;
-        second_predecessors.insert(element1_id);
+        related_elements_t& element2_predecessors = it->second.first;
+        element2_predecessors.insert(element1_id);
     }
 
     void add_relation_transitively(poset_t& poset, element_id_t element1_id, element_id_t element2_id) {
@@ -101,68 +110,63 @@ namespace {
         add_relation(poset, element1_id, element2_id);
     }
 
-    //TODO przemyśleć zmiane nazewnictwa
-    void remove_relation_unconditionally(poset_graph_t& poset_graph, element_id_t element1_id, element_id_t element2_id) {
-        auto it = poset_graph.find(element1_id);
+    void remove_relation(poset_graph_t& poset_graph, element_id_t element1_id, bool erase_from_element1,
+            element_id_t element2_id, bool erase_from_element2) {
+        if (erase_from_element1) {
+            auto it1 = poset_graph.find(element1_id);
+            related_elements_t& element1_successors = it1->second.second;
+            element1_successors.erase(element2_id);
+        }
 
-        related_elements_t& successors = it->second.second;
-        successors.erase(element2_id);
-
-        it = poset_graph.find(element2_id);
-
-        related_elements_t& predecessors = it->second.first;
-        predecessors.erase(element1_id);
+        if (erase_from_element2) {
+            auto it2 = poset_graph.find(element2_id);
+            related_elements_t& element2_predecessors = it2->second.first;
+            element2_predecessors.erase(element1_id);
+        }
     }
 
-    bool remove_relation(poset_t& poset, element_id_t element1_id, element_id_t element2_id) {
-        poset_graph_t& poset_graph = poset.second;
-
+    bool can_remove_relation(poset_graph_t& poset_graph, element_id_t element1_id, element_id_t element2_id) {
         auto it1 = poset_graph.find(element1_id);
         assert(it1 != poset_graph.end());
-        related_elements_t& successors_of_element1 = it1->second.second;
+        related_elements_t& element1_successors = it1->second.second;
 
         auto it2 = poset_graph.find(element2_id);
         assert(it2 != poset_graph.end());
-        related_elements_t& predecessors_of_element2 = it2->second.first;
+        related_elements_t& element2_predecessors = it2->second.first;
 
-        for (auto const& s_id:successors_of_element1) {
-            auto it3 = predecessors_of_element2.find(s_id);
-            if (it3 != predecessors_of_element2.end()) { // non-empty intersection means removing relation will violate poset
+        for (auto successor_id: element1_successors) {
+            auto it3 = element2_predecessors.find(successor_id);
+            // non-empty intersection means removing relation will violate poset
+            if (it3 != element2_predecessors.end()) {
                 return false;
             }
         }
-        remove_relation_unconditionally(poset_graph, element1_id, element2_id);
+
         return true;
     }
 
-    enum Related_elements_enum {PREDECESSORS, SUCCESSORS};
-
-    void remove_relations_between(poset_graph_t& poset_graph, element_id_t element_id, related_elements_t& related_elements,
-            enum Related_elements_enum related_elements_enum) {
-        std::unordered_set<element_id_t> tmp_set = related_elements;
-
-        auto it = tmp_set.begin();
-        while (it != tmp_set.end()) {
+    void remove_relations_iteratively(poset_graph_t& poset_graph, element_id_t element_id,
+            related_elements_t& related_elements, relation_order_e relation_order) {
+        for (auto it = related_elements.begin(); it != related_elements.end(); it = related_elements.erase(it)) {
             element_id_t related_element_id = *it;
 
-            if(related_elements_enum == PREDECESSORS)
-                remove_relation_unconditionally(poset_graph, related_element_id, element_id);
-            else
-                remove_relation_unconditionally(poset_graph, element_id, related_element_id);
-
-            it = tmp_set.erase(it);
+            if (relation_order == PREDECESSING) {
+                remove_relation(poset_graph, related_element_id, true, element_id, false);
+            } else {
+                remove_relation(poset_graph, element_id, false, related_element_id, true);
+            }
         }
     }
 
-    void remove_element_from_poset_graph(poset_t& poset, element_id_t element_id) {
-        poset_graph_t& poset_graph = poset.second;
+    void remove_element_from_poset_graph(poset_graph_t& poset_graph, element_id_t element_id) {
+        auto it = poset_graph.find(element_id);
+        assert(it != poset_graph.end());
 
-        auto it1 = poset_graph.find(element_id);
-        related_elements_t& predecessors = it1->second.first;
-        related_elements_t& successors = it1->second.second;
+        related_elements_t& predecessors = it->second.first;
+        related_elements_t& successors = it->second.second;
 
-        remove_relations_between(poset_graph, element_id, predecessors, PREDECESSORS);
-        remove_relations_between(poset_graph, element_id, successors, SUCCESSORS);
+        remove_relations_iteratively(poset_graph, element_id, predecessors, PREDECESSING);
+        remove_relations_iteratively(poset_graph, element_id, successors, SUCCESSING);
 
         poset_graph.erase(element_id);
     }
@@ -177,9 +181,10 @@ unsigned long jnp1::poset_new() {
 
 void jnp1::poset_delete(unsigned long id) {
     auto it = poset_map().find(id);
-    if (it == poset_map().end()) return;
 
-    poset_map().erase(it);
+    if (it != poset_map().end()) {
+        poset_map().erase(it);
+    }
 }
 
 size_t jnp1::poset_size(unsigned long id) {
@@ -190,14 +195,19 @@ size_t jnp1::poset_size(unsigned long id) {
 
 bool jnp1::poset_insert(unsigned long id, char const *value) {
     auto poset_opt = get_poset(id);
-    if (!poset_opt.has_value()) return false;
-
+    if (!poset_opt.has_value()) {
+        return false;
+    }
     poset_t& poset = poset_opt.value().get();
 
-    if (!is_cstring_valid(value)) return false;
+    if (!is_cstring_valid(value)) {
+        return false;
+    }
     std::string element_name(value);
 
-    if (get_element_id_from_dictionary(poset.first, element_name).has_value()) return false;
+    if (get_element_id_from_dictionary(poset.first, element_name).has_value()) {
+        return false;
+    }
 
     element_id_t element_id = insert_element_into_dictionary(poset.first, element_name);
     insert_element_into_poset_graph(poset.second, element_id);
@@ -206,42 +216,49 @@ bool jnp1::poset_insert(unsigned long id, char const *value) {
 }
 
 bool jnp1::poset_remove(unsigned long id, char const *value) {
-    if (!is_cstring_valid(value)) return false;
+    if (!is_cstring_valid(value)) {
+        return false;
+    }
     std::string element_name(value);
 
     auto poset_opt = get_poset(id);
-    if (!poset_opt.has_value()) return false;
-
+    if (!poset_opt.has_value()) {
+        return false;
+    }
     poset_t& poset = poset_opt.value().get();
 
     std::optional<element_id_t> element_id = get_element_id_from_dictionary(poset.first, element_name);
-    if (!element_id.has_value()) return false;
+    if (!element_id.has_value()) {
+        return false;
+    }
 
-    remove_element_from_poset_graph(poset, element_id.value());
+    remove_element_from_poset_graph(poset.second, element_id.value());
+    remove_element_from_dictionary(poset.first, element_name);
 
-    dictionary_t& dictionary = poset.first;
-    dictionary.erase(std::string(value));
     return true;
 }
 
 bool jnp1::poset_add(unsigned long id, char const *value1, char const *value2) {
     auto poset_opt = get_poset(id);
-    if (!poset_opt.has_value()) return false;
+    if (!poset_opt.has_value() || !is_cstring_valid(value1) || !is_cstring_valid(value2)) {
+        return false;
+    }
 
     poset_t& poset = poset_opt.value().get();
-
-    if (!is_cstring_valid(value1) || !is_cstring_valid(value2)) return false;
-
     std::string element1_name(value1), element2_name(value2);
-    if (element1_name == element2_name) return false;
+    if (element1_name == element2_name) {
+        return false;
+    }
 
     std::optional<element_id_t> element1_id, element2_id;
     element1_id = get_element_id_from_dictionary(poset.first, element1_name);
     element2_id = get_element_id_from_dictionary(poset.first, element2_name);
 
     if (!element1_id.has_value() || !element2_id.has_value() ||
-        are_elements_related(poset, element1_id.value(), element2_id.value()) ||
-        are_elements_related(poset, element2_id.value(), element1_id.value())) return false;
+            are_elements_related(poset, element1_id.value(), element2_id.value()) ||
+            are_elements_related(poset, element2_id.value(), element1_id.value())) {
+        return false;
+    }
 
     add_relation_transitively(poset, element1_id.value(), element2_id.value());
 
@@ -249,53 +266,61 @@ bool jnp1::poset_add(unsigned long id, char const *value1, char const *value2) {
 }
 
 bool jnp1::poset_del(unsigned long id, char const *value1, char const *value2) {
-    if (!is_cstring_valid(value1) || !is_cstring_valid(value2)) return false;
-    std::string element1_name(value1), element2_name(value2);
-
     auto poset_opt = get_poset(id);
-    if (!poset_opt.has_value()) return false;
+    if (!poset_opt.has_value() || !is_cstring_valid(value1) || !is_cstring_valid(value2)) {
+        return false;
+    }
 
     poset_t& poset = poset_opt.value().get();
+    std::string element1_name(value1), element2_name(value2);
 
     std::optional<element_id_t> element1_id, element2_id;
     element1_id = get_element_id_from_dictionary(poset.first, element1_name);
     element2_id = get_element_id_from_dictionary(poset.first, element2_name);
 
     if (!element1_id.has_value() || !element2_id.has_value() ||
-        !are_elements_related(poset, element1_id.value(), element2_id.value())) return false;
+            !are_elements_related(poset, element1_id.value(), element2_id.value()) ||
+            !can_remove_relation(poset.second, element1_id.value(), element2_id.value())) {
+        return false;
+    }
 
-    return remove_relation(poset, element1_id.value(), element2_id.value());
+    remove_relation(poset.second, element1_id.value(), true, element2_id.value(), true);
+
+    return true;
 }
 
 bool jnp1::poset_test(unsigned long id, char const *value1, char const *value2) {
     auto poset_opt = get_poset(id);
-    if (!poset_opt.has_value()) return false;
+    if (!poset_opt.has_value() || !is_cstring_valid(value1) || !is_cstring_valid(value2)) {
+        return false;
+    }
 
     poset_t& poset = poset_opt.value().get();
-
-    if (!is_cstring_valid(value1) || !is_cstring_valid(value2)) return false;
-
     std::string name1(value1), name2(value2);
+    
     std::optional<element_id_t> element_id1, element_id2;
     element_id1 = get_element_id_from_dictionary(poset.first, name1);
     element_id2 = get_element_id_from_dictionary(poset.first, name2);
 
-    if (!element_id1.has_value() || !element_id2.has_value()) return false;
-    if (element_id1.value() == element_id2.value()) return true;
+    if (!element_id1.has_value() || !element_id2.has_value()) {
+        return false;
+    }
+    if (element_id1.value() == element_id2.value()) {
+        return true;
+    }
 
     return are_elements_related(poset, element_id1.value(), element_id2.value());
 }
 
 void jnp1::poset_clear(unsigned long id) {
     auto poset_opt = get_poset(id);
-    if (!poset_opt.has_value()) return;
+    if (poset_opt.has_value()) {
+        poset_t& poset = poset_opt.value().get();
 
-    poset_t& poset = poset_opt.value().get();
-
-    poset.first.clear();
-    poset.second.clear();
+        poset.first.clear();
+        poset.second.clear();
+    }
 }
-
 
 //int main() {
 //    using namespace jnp1;
