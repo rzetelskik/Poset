@@ -100,8 +100,9 @@ namespace {
 
         add_relation(poset, element1_id, element2_id);
     }
+
     //TODO przemyśleć zmiane nazewnictwa
-    bool remove_relation_unconditionally(poset_graph_t& poset_graph, element_id_t element1_id, element_id_t element2_id) {
+    void remove_relation_unconditionally(poset_graph_t& poset_graph, element_id_t element1_id, element_id_t element2_id) {
         auto it = poset_graph.find(element1_id);
 
         related_elements_t& successors = it->second.second;
@@ -112,7 +113,6 @@ namespace {
         related_elements_t& predecessors = it->second.first;
         predecessors.erase(element1_id);
     }
-
 
     bool remove_relation(poset_t& poset, element_id_t element1_id, element_id_t element2_id) {
         poset_graph_t& poset_graph = poset.second;
@@ -175,9 +175,17 @@ unsigned long jnp1::poset_new() {
     return id;
 }
 
-size_t jnp1::poset_size(unsigned long id) {
+void jnp1::poset_delete(unsigned long id) {
     auto it = poset_map().find(id);
-    return ((it != poset_map().end()) ? it->second.first.size() : 0); // zwraca rozmiar słownika
+    if (it == poset_map().end()) return;
+
+    poset_map().erase(it);
+}
+
+size_t jnp1::poset_size(unsigned long id) {
+    auto poset_opt = get_poset(id);
+
+    return (poset_opt.has_value() ? poset_opt.value().get().first.size() : 0);
 }
 
 bool jnp1::poset_insert(unsigned long id, char const *value) {
@@ -289,70 +297,59 @@ void jnp1::poset_clear(unsigned long id) {
 }
 
 
-int main() {
-    using namespace jnp1;
-
-    poset_id_t poset_id = poset_new();
-    assert(!poset_size(poset_id));
-    assert(poset_insert(poset_id, "a"));
-    assert(!poset_insert(poset_id, "a"));
-    assert(poset_insert(poset_id, "b"));
-    assert(poset_insert(poset_id, "c"));
-    assert(poset_insert(poset_id, "d"));
-    assert(poset_add(poset_id, "b", "c"));
-    assert(poset_test(poset_id, "b", "c"));
-    assert(!poset_test(poset_id, "c", "b"));
-    assert(poset_test(poset_id, "b", "b"));
-    assert(!poset_insert(poset_id, nullptr));
-    assert(!poset_add(poset_id, "a", "a"));
-    assert(!poset_add(poset_id, "c", "b"));
-    assert(!poset_add(poset_id, "b", "c"));
-    assert(poset_add(poset_id, "c", "d"));
-    assert(poset_test(poset_id, "c", "d"));
-    assert(poset_test(poset_id, "b", "d"));
-    assert(poset_add(poset_id, "a", "b"));
-    assert(poset_test(poset_id, "a", "b"));
-    assert(poset_test(poset_id, "a", "d"));
-    assert(!poset_test(poset_id, "d", "a"));
-    poset_clear(poset_id);
-    assert(!poset_test(poset_id, "a", "d"));
-    assert(!poset_test(poset_id, "b", "c"));
-    assert(!poset_test(poset_id, "b", "d"));
-    assert(poset_insert(poset_id, "a"));
-
-
-    poset_clear(poset_id);
-    assert(poset_size(poset_id) == 0);
-
-    assert(poset_insert(poset_id, "a"));
-    assert(poset_insert(poset_id, "b"));
-    assert(poset_insert(poset_id, "c"));
-    assert(poset_add(poset_id, "a", "b"));
-    assert(poset_add(poset_id, "b", "c"));
-
-    assert(!poset_del(poset_id, "a", "c"));
-    assert(poset_insert(poset_id, "d"));
-    assert(!poset_del(poset_id, "a", "d"));
-    assert(!poset_del(poset_id, "a", nullptr));
-    assert(!poset_del(poset_id, "a", "e"));
-
-    assert(poset_remove(poset_id, "b"));
-    assert(poset_remove(poset_id, "c"));
-    assert(poset_remove(poset_id, "d"));
-    assert(poset_size(poset_id) == 1);
-    assert(!poset_test(poset_id, "b", "d"));
-    assert(!poset_test(poset_id, "a", "d"));
-
-
-
-
-
-
-
-
-
-
-
-
-    return 0;
-}
+//int main() {
+//    using namespace jnp1;
+//
+//    poset_id_t poset_id = poset_new();
+//    assert(!poset_size(poset_id));
+//    assert(poset_insert(poset_id, "a"));
+//    assert(!poset_insert(poset_id, "a"));
+//    assert(poset_insert(poset_id, "b"));
+//    assert(poset_insert(poset_id, "c"));
+//    assert(poset_insert(poset_id, "d"));
+//    assert(poset_add(poset_id, "b", "c"));
+//    assert(poset_test(poset_id, "b", "c"));
+//    assert(!poset_test(poset_id, "c", "b"));
+//    assert(poset_test(poset_id, "b", "b"));
+//    assert(!poset_insert(poset_id, nullptr));
+//    assert(!poset_add(poset_id, "a", "a"));
+//    assert(!poset_add(poset_id, "c", "b"));
+//    assert(!poset_add(poset_id, "b", "c"));
+//    assert(poset_add(poset_id, "c", "d"));
+//    assert(poset_test(poset_id, "c", "d"));
+//    assert(poset_test(poset_id, "b", "d"));
+//    assert(poset_add(poset_id, "a", "b"));
+//    assert(poset_test(poset_id, "a", "b"));
+//    assert(poset_test(poset_id, "a", "d"));
+//    assert(!poset_test(poset_id, "d", "a"));
+//    poset_clear(poset_id);
+//    assert(!poset_test(poset_id, "a", "d"));
+//    assert(!poset_test(poset_id, "b", "c"));
+//    assert(!poset_test(poset_id, "b", "d"));
+//    assert(poset_insert(poset_id, "a"));
+//
+//
+//    poset_clear(poset_id);
+//    assert(poset_size(poset_id) == 0);
+//
+//    assert(poset_insert(poset_id, "a"));
+//    assert(poset_insert(poset_id, "b"));
+//    assert(poset_insert(poset_id, "c"));
+//    assert(poset_add(poset_id, "a", "b"));
+//    assert(poset_add(poset_id, "b", "c"));
+//
+//    assert(!poset_del(poset_id, "a", "c"));
+//    assert(poset_insert(poset_id, "d"));
+//    assert(!poset_del(poset_id, "a", "d"));
+//    assert(!poset_del(poset_id, "a", nullptr));
+//    assert(!poset_del(poset_id, "a", "e"));
+//
+//    assert(poset_remove(poset_id, "b"));
+//    assert(poset_remove(poset_id, "c"));
+//    assert(poset_remove(poset_id, "d"));
+//    assert(poset_size(poset_id) == 1);
+//    assert(!poset_test(poset_id, "b", "d"));
+//    assert(!poset_test(poset_id, "a", "d"));
+//
+//    return 0;
+//}

@@ -1,10 +1,15 @@
 #ifndef POSET_POSET_H
 #define POSET_POSET_H
 
-extern "C" {
-    #include <cstdio>
+#ifdef __cplusplus
+#include <cstdio>
 
-    namespace jnp1 {
+namespace jnp1 {
+    extern "C" {
+#else
+#include <stdio.h>
+#include <stdbool.h>
+#endif
         unsigned long poset_new(void);
 
         void poset_delete(unsigned long id);
@@ -22,8 +27,10 @@ extern "C" {
         bool poset_test(unsigned long id, char const *value1, char const *value2);
 
         void poset_clear(unsigned long id);
+#ifdef __cplusplus
     }
-};
+}
+#endif
 
 
 
