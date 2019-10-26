@@ -75,39 +75,39 @@ namespace {
         poset_graph.insert({element_id, {predecessors, successors}});
     }
 
-    bool are_elements_related(poset_t& poset, element_id_t element1_id, element_id_t element2_id) {
-        auto it = poset.second.find(element1_id);
+    bool are_elements_related(poset_graph_t& poset_graph, element_id_t element1_id, element_id_t element2_id) {
+        auto it = poset_graph.find(element1_id);
         related_elements_t& successors = it->second.second;
 
         return (successors.find(element2_id) != successors.end());
     }
 
-    void add_relation(poset_t& poset, element_id_t element1_id, element_id_t element2_id) {
-        auto it = poset.second.find(element1_id);
+    void add_relation(poset_graph_t& poset_graph, element_id_t element1_id, element_id_t element2_id) {
+        auto it = poset_graph.find(element1_id);
         related_elements_t& element1_successors = it->second.second;
         element1_successors.insert(element2_id);
 
-        it = poset.second.find(element2_id);
+        it = poset_graph.find(element2_id);
         related_elements_t& element2_predecessors = it->second.first;
         element2_predecessors.insert(element1_id);
     }
 
-    void add_relation_transitively(poset_t& poset, element_id_t element1_id, element_id_t element2_id) {
-        auto it = poset.second.find(element1_id);
-        related_elements_t& preceeding_first = it->second.first;
+    void add_relation_transitively(poset_graph_t& poset_graph, element_id_t element1_id, element_id_t element2_id) {
+        auto it = poset_graph.find(element1_id);
+        related_elements_t& element1_predecessors = it->second.first;
 
-        for (element_id_t el: preceeding_first) {
-            add_relation(poset, el, element2_id);
+        for (element_id_t el: element1_predecessors) {
+            add_relation(poset_graph, el, element2_id);
         }
 
-        it = poset.second.find(element2_id);
-        related_elements_t& proceeding_second = it->second.second;
+        it = poset_graph.find(element2_id);
+        related_elements_t& element2_successors = it->second.second;
 
-        for (element_id_t el: proceeding_second) {
-            add_relation(poset, element1_id, el);
+        for (element_id_t el: element2_successors) {
+            add_relation(poset_graph, element1_id, el);
         }
 
-        add_relation(poset, element1_id, element2_id);
+        add_relation(poset_graph, element1_id, element2_id);
     }
 
     void remove_relation(poset_graph_t& poset_graph, element_id_t element1_id, bool erase_from_element1,
@@ -255,12 +255,12 @@ bool jnp1::poset_add(unsigned long id, char const *value1, char const *value2) {
     element2_id = get_element_id_from_dictionary(poset.first, element2_name);
 
     if (!element1_id.has_value() || !element2_id.has_value() ||
-            are_elements_related(poset, element1_id.value(), element2_id.value()) ||
-            are_elements_related(poset, element2_id.value(), element1_id.value())) {
+            are_elements_related(poset.second, element1_id.value(), element2_id.value()) ||
+            are_elements_related(poset.second, element2_id.value(), element1_id.value())) {
         return false;
     }
 
-    add_relation_transitively(poset, element1_id.value(), element2_id.value());
+    add_relation_transitively(poset.second, element1_id.value(), element2_id.value());
 
     return true;
 }
@@ -279,7 +279,7 @@ bool jnp1::poset_del(unsigned long id, char const *value1, char const *value2) {
     element2_id = get_element_id_from_dictionary(poset.first, element2_name);
 
     if (!element1_id.has_value() || !element2_id.has_value() ||
-            !are_elements_related(poset, element1_id.value(), element2_id.value()) ||
+            !are_elements_related(poset.second, element1_id.value(), element2_id.value()) ||
             !can_remove_relation(poset.second, element1_id.value(), element2_id.value())) {
         return false;
     }
@@ -309,7 +309,7 @@ bool jnp1::poset_test(unsigned long id, char const *value1, char const *value2) 
         return true;
     }
 
-    return are_elements_related(poset, element_id1.value(), element_id2.value());
+    return are_elements_related(poset.second, element_id1.value(), element_id2.value());
 }
 
 void jnp1::poset_clear(unsigned long id) {
