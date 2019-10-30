@@ -3,6 +3,7 @@
 
 #ifdef __cplusplus
 #include <cstdio>
+#include <iostream>
 
 namespace jnp1 {
     extern "C" {
