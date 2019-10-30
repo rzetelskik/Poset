@@ -435,6 +435,7 @@ void jnp1::poset_clear(unsigned long id) {
 
         poset.first.clear();
         poset.second.clear();
+
         log_debug("poset_clear: poset ", id, " cleared");
     } else {
         log_debug("poset_clear: poset ", id, " does not exist");
