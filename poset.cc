@@ -8,6 +8,19 @@
 #include <cassert>
 
 namespace {
+
+#ifdef NDEBUG
+    bool debug() {
+		static const bool debug = false;
+		return debug;
+	}
+#else
+    bool debug() {
+        static const bool debug = true;
+        return debug;
+    }
+#endif
+
     using poset_id_t = unsigned long;
     using element_id_t = unsigned long long;
     using related_elements_t = std::unordered_set<element_id_t>;
@@ -20,6 +33,18 @@ namespace {
         PREDECESSING,
         SUCCESSING
     };
+
+    template<typename ... Args>
+    inline void log_debug() {
+    }
+
+    template<typename T, typename ... Args>
+    inline void log_debug(T t, Args ... args) {
+        if (debug()) {
+            std::cerr << t;
+            log_debug(args...);
+        }
+    }
 
     poset_map_t& poset_map() {
         static poset_map_t poset_map;
@@ -176,77 +201,117 @@ unsigned long jnp1::poset_new() {
     poset_id_t id = get_new_poset_id();
     poset_t poset;
     poset_map().insert({id, poset});
+
+    log_debug("poset_new()\nposet_new: poset ", id, " created\n");
     return id;
 }
 
 void jnp1::poset_delete(unsigned long id) {
-    auto it = poset_map().find(id);
+    log_debug("poset_delete(", id, ")\nposet_delete: poset ", id);
 
+    auto it = poset_map().find(id);
     if (it != poset_map().end()) {
+        log_debug(" deleted\n");
         poset_map().erase(it);
+    } else {
+        log_debug(" does not exist\n");
     }
 }
 
 size_t jnp1::poset_size(unsigned long id) {
-    auto poset_opt = get_poset(id);
+    log_debug("poset_size(", id, ")\nposet_size: poset ", id);
 
-    return (poset_opt.has_value() ? poset_opt.value().get().first.size() : 0);
+    auto poset_opt = get_poset(id);
+    if(poset_opt.has_value()) {
+         size_t size = poset_opt.value().get().first.size();
+        log_debug(" contains ", size, " element(s)\n");
+        return size;
+    } else {
+        log_debug(" does not exist\n");
+        return 0;
+    }
 }
 
 bool jnp1::poset_insert(unsigned long id, char const *value) {
+    log_debug("poset_insert(", id, " \"", (is_cstring_valid(value) ? value : "NULL"), "\")\nposet_insert: ");
     auto poset_opt = get_poset(id);
     if (!poset_opt.has_value()) {
+        log_debug("poset ", id, " does not exist\n");
         return false;
     }
     poset_t& poset = poset_opt.value().get();
 
     if (!is_cstring_valid(value)) {
+        log_debug("invalid value (NULL)\n");
         return false;
     }
     std::string element_name(value);
 
     if (get_element_id_from_dictionary(poset.first, element_name).has_value()) {
+        log_debug("poset ", id, ", element \"", value, "\"", " already exists\n");
         return false;
     }
 
     element_id_t element_id = insert_element_into_dictionary(poset.first, element_name);
     insert_element_into_poset_graph(poset.second, element_id);
+    log_debug("poset ", id, ", element \"", value, "\"", " inserted\n");
 
     return true;
 }
 
 bool jnp1::poset_remove(unsigned long id, char const *value) {
+    log_debug("poset_remove(", id, " \"", (is_cstring_valid(value) ? value : "NULL"), "\")\nposet_remove: ");
+
+    auto poset_opt = get_poset(id);
+    if (!poset_opt.has_value()) {
+        log_debug("poset ", id, " does not exist\n");
+        return false;
+    }
+
     if (!is_cstring_valid(value)) {
+        log_debug("invalid value (NULL)\n");
         return false;
     }
     std::string element_name(value);
 
-    auto poset_opt = get_poset(id);
-    if (!poset_opt.has_value()) {
-        return false;
-    }
     poset_t& poset = poset_opt.value().get();
 
     std::optional<element_id_t> element_id = get_element_id_from_dictionary(poset.first, element_name);
     if (!element_id.has_value()) {
+        log_debug("poset ", id, ", element \"", value, "\"", " does not exist\n");
         return false;
     }
 
     remove_element_from_poset_graph(poset.second, element_id.value());
     remove_element_from_dictionary(poset.first, element_name);
+    log_debug("poset ", id, ", element \"", value, "\"", " removed");
 
     return true;
 }
 
 bool jnp1::poset_add(unsigned long id, char const *value1, char const *value2) {
+    log_debug("poset_add(", id, " \"", (is_cstring_valid(value1) ? value1 : "NULL"), "\", \"",
+            (is_cstring_valid(value2) ? value2 : "NULL"), "\"", ")\nposet_add: ");
+
     auto poset_opt = get_poset(id);
-    if (!poset_opt.has_value() || !is_cstring_valid(value1) || !is_cstring_valid(value2)) {
+    if (!poset_opt.has_value()) {
+        log_debug("poset ", id, " does not exist\n");
+        return false;
+    }
+
+    if (!is_cstring_valid(value1)) {
+        log_debug("invalid value1 (NULL)\n");
+        return false;
+    }
+    if (!is_cstring_valid(value2)) {
+        log_debug("invalid value2 (NULL)\n");
         return false;
     }
 
     poset_t& poset = poset_opt.value().get();
     std::string element1_name(value1), element2_name(value2);
     if (element1_name == element2_name) {
+        log_debug("poset ", id, ", relation (\"", value1, "\", \"", value2 , "\") cannot be added\n");
         return false;
     }
 
@@ -254,20 +319,39 @@ bool jnp1::poset_add(unsigned long id, char const *value1, char const *value2) {
     element1_id = get_element_id_from_dictionary(poset.first, element1_name);
     element2_id = get_element_id_from_dictionary(poset.first, element2_name);
 
-    if (!element1_id.has_value() || !element2_id.has_value() ||
-            are_elements_related(poset.second, element1_id.value(), element2_id.value()) ||
-            are_elements_related(poset.second, element2_id.value(), element1_id.value())) {
+    if (!element1_id.has_value() || !element2_id.has_value()) {
+        log_debug("poset ", id, ", element \"", value1, "\" or \"", value2 , "\" does not exist\n");
         return false;
     }
 
+     if (are_elements_related(poset.second, element1_id.value(), element2_id.value()) ||
+            are_elements_related(poset.second, element2_id.value(), element1_id.value())) {
+         log_debug("poset ", id, ", relation (\"", value1, "\", \"", value2 , "\") cannot be added\n");
+         return false;
+    }
+
     add_relation_transitively(poset.second, element1_id.value(), element2_id.value());
+    log_debug("poset ", id, ", relation (\"", value1, ",\" \"", value2 , "\") added\n");
 
     return true;
 }
 
 bool jnp1::poset_del(unsigned long id, char const *value1, char const *value2) {
+    log_debug("poset_del(", id, " \"", (is_cstring_valid(value1) ? value1 : "NULL"), "\", \"",
+            (is_cstring_valid(value2) ? value2 : "NULL"), "\"", ")\nposet_del: ");
+
     auto poset_opt = get_poset(id);
-    if (!poset_opt.has_value() || !is_cstring_valid(value1) || !is_cstring_valid(value2)) {
+    if (!poset_opt.has_value()) {
+        log_debug("poset ", id, " does not exist\n");
+        return false;
+    }
+
+    if (!is_cstring_valid(value1)) {
+        log_debug("invalid value1 (NULL)\n");
+        return false;
+    }
+    if (!is_cstring_valid(value2)) {
+        log_debug("invalid value2 (NULL)\n");
         return false;
     }
 
@@ -278,20 +362,39 @@ bool jnp1::poset_del(unsigned long id, char const *value1, char const *value2) {
     element1_id = get_element_id_from_dictionary(poset.first, element1_name);
     element2_id = get_element_id_from_dictionary(poset.first, element2_name);
 
-    if (!element1_id.has_value() || !element2_id.has_value() ||
-            !are_elements_related(poset.second, element1_id.value(), element2_id.value()) ||
+    if (!element1_id.has_value() || !element2_id.has_value()) {
+        log_debug("poset ", id, ", element \"", value1, "\" or \"", value2 , "\" does not exist\n");
+        return false;
+    }
+
+    if (!are_elements_related(poset.second, element1_id.value(), element2_id.value()) ||
             !can_remove_relation(poset.second, element1_id.value(), element2_id.value())) {
+        log_debug("poset ", id, ", relation (\"", value1, "\", \"", value2 , "\") cannot be deleted\n");
         return false;
     }
 
     remove_relation(poset.second, element1_id.value(), true, element2_id.value(), true);
+    log_debug("poset ", id, ", relation (\"", value1, ",\" \"", value2 , "\") deleted\n");
 
     return true;
 }
 
 bool jnp1::poset_test(unsigned long id, char const *value1, char const *value2) {
+    log_debug("poset_test(", id, " \"", (is_cstring_valid(value1) ? value1 : "NULL"), "\", \"",
+            (is_cstring_valid(value2) ? value2 : "NULL"), "\"", ")\nposet_test: ");
+
     auto poset_opt = get_poset(id);
-    if (!poset_opt.has_value() || !is_cstring_valid(value1) || !is_cstring_valid(value2)) {
+    if (!poset_opt.has_value()) {
+        log_debug("poset ", id, " does not exist\n");
+        return false;
+    }
+
+    if (!is_cstring_valid(value1)) {
+        log_debug("invalid value1 (NULL)\n");
+        return false;
+    }
+    if (!is_cstring_valid(value2)) {
+        log_debug("invalid value2 (NULL)\n");
         return false;
     }
 
@@ -303,78 +406,33 @@ bool jnp1::poset_test(unsigned long id, char const *value1, char const *value2) 
     element_id2 = get_element_id_from_dictionary(poset.first, name2);
 
     if (!element_id1.has_value() || !element_id2.has_value()) {
+        log_debug("poset ", id, ", element \"", value1, "\" or \"", value2 , "\" does not exist\n");
         return false;
     }
     if (element_id1.value() == element_id2.value()) {
+        log_debug("poset ", id, ", element \"", value1, "\" or \"", value2 , "\" exist\n");
         return true;
     }
 
-    return are_elements_related(poset.second, element_id1.value(), element_id2.value());
+    if(are_elements_related(poset.second, element_id1.value(), element_id2.value())){
+        log_debug("poset ", id, ", element \"", value1, "\" or \"", value2 , "\" exists\n");
+        return true;
+    } else {
+        log_debug("poset ", id, ", element \"", value1, "\" or \"", value2 , "\" does not exist\n");
+        return false;
+    }
 }
 
 void jnp1::poset_clear(unsigned long id) {
+    log_debug("poset_clear(", id, ")\nposet_clear: poset ", id);
     auto poset_opt = get_poset(id);
     if (poset_opt.has_value()) {
         poset_t& poset = poset_opt.value().get();
 
         poset.first.clear();
         poset.second.clear();
+        log_debug(" cleared\n");
+    } else {
+        log_debug(" does not exist\n");
     }
 }
-
-//int main() {
-//    using namespace jnp1;
-//
-//    poset_id_t poset_id = poset_new();
-//    assert(!poset_size(poset_id));
-//    assert(poset_insert(poset_id, "a"));
-//    assert(!poset_insert(poset_id, "a"));
-//    assert(poset_insert(poset_id, "b"));
-//    assert(poset_insert(poset_id, "c"));
-//    assert(poset_insert(poset_id, "d"));
-//    assert(poset_add(poset_id, "b", "c"));
-//    assert(poset_test(poset_id, "b", "c"));
-//    assert(!poset_test(poset_id, "c", "b"));
-//    assert(poset_test(poset_id, "b", "b"));
-//    assert(!poset_insert(poset_id, nullptr));
-//    assert(!poset_add(poset_id, "a", "a"));
-//    assert(!poset_add(poset_id, "c", "b"));
-//    assert(!poset_add(poset_id, "b", "c"));
-//    assert(poset_add(poset_id, "c", "d"));
-//    assert(poset_test(poset_id, "c", "d"));
-//    assert(poset_test(poset_id, "b", "d"));
-//    assert(poset_add(poset_id, "a", "b"));
-//    assert(poset_test(poset_id, "a", "b"));
-//    assert(poset_test(poset_id, "a", "d"));
-//    assert(!poset_test(poset_id, "d", "a"));
-//    poset_clear(poset_id);
-//    assert(!poset_test(poset_id, "a", "d"));
-//    assert(!poset_test(poset_id, "b", "c"));
-//    assert(!poset_test(poset_id, "b", "d"));
-//    assert(poset_insert(poset_id, "a"));
-//
-//
-//    poset_clear(poset_id);
-//    assert(poset_size(poset_id) == 0);
-//
-//    assert(poset_insert(poset_id, "a"));
-//    assert(poset_insert(poset_id, "b"));
-//    assert(poset_insert(poset_id, "c"));
-//    assert(poset_add(poset_id, "a", "b"));
-//    assert(poset_add(poset_id, "b", "c"));
-//
-//    assert(!poset_del(poset_id, "a", "c"));
-//    assert(poset_insert(poset_id, "d"));
-//    assert(!poset_del(poset_id, "a", "d"));
-//    assert(!poset_del(poset_id, "a", nullptr));
-//    assert(!poset_del(poset_id, "a", "e"));
-//
-//    assert(poset_remove(poset_id, "b"));
-//    assert(poset_remove(poset_id, "c"));
-//    assert(poset_remove(poset_id, "d"));
-//    assert(poset_size(poset_id) == 1);
-//    assert(!poset_test(poset_id, "b", "d"));
-//    assert(!poset_test(poset_id, "a", "d"));
-//
-//    return 0;
-//}
