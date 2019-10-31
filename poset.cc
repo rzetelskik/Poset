@@ -1,5 +1,4 @@
 #include "poset.h"
-#include <iostream>
 #include <vector>
 #include <string>
 #include <unordered_set>
@@ -164,7 +163,9 @@ namespace {
 
         for (auto successor_id: element1_successors) {
             auto it3 = element2_predecessors.find(successor_id);
-            // non-empty intersection means removing relation will violate poset
+
+            // A non-empty intersection means that removing the relation
+            // would violate poset conditions.
             if (it3 != element2_predecessors.end()) {
                 return false;
             }
@@ -174,7 +175,7 @@ namespace {
     }
 
     void remove_relations_iteratively(poset_graph_t& poset_graph, element_id_t element_id,
-                                      related_elements_t& related_elements, relation_order_e relation_order) {
+            related_elements_t& related_elements, relation_order_e relation_order) {
         for (auto it = related_elements.begin(); it != related_elements.end(); it = related_elements.erase(it)) {
             element_id_t related_element_id = *it;
 
@@ -207,6 +208,7 @@ unsigned long jnp1::poset_new() {
 
     log_debug("poset_new()");
     log_debug("poset_new: poset ", id, " created");
+
     return id;
 }
 
@@ -214,30 +216,33 @@ void jnp1::poset_delete(unsigned long id) {
     log_debug("poset_delete(", id, ")");
 
     auto it = poset_map().find(id);
-    if (it != poset_map().end()) {
-        log_debug("poset_delete: poset ", id, " deleted");
-        poset_map().erase(it);
-    } else {
+    if (it == poset_map().end()) {
         log_debug("poset_delete: poset ", id, " does not exist");
+        return;
     }
+
+    poset_map().erase(it);
+    log_debug("poset_delete: poset ", id, " deleted");
 }
 
 size_t jnp1::poset_size(unsigned long id) {
     log_debug("poset_size(", id, ")");
 
     auto poset_opt = get_poset(id);
-    if(poset_opt.has_value()) {
-        size_t size = poset_opt.value().get().first.size();
-        log_debug("poset_size: poset ", id, " contains ", size, " element(s)");
-        return size;
-    } else {
+    if (!poset_opt.has_value()) {
         log_debug("poset_size: poset ", id, " does not exist");
         return 0;
     }
+
+    size_t size = poset_opt.value().get().first.size();
+    log_debug("poset_size: poset ", id, " contains ", size, " element(s)");
+
+    return size;
 }
 
 bool jnp1::poset_insert(unsigned long id, char const *value) {
     log_debug("poset_insert(", id, ", \"", (is_cstring_valid(value) ? value : "NULL"), "\")");
+
     auto poset_opt = get_poset(id);
     if (!poset_opt.has_value()) {
         log_debug("poset_insert: poset ", id, " does not exist");
@@ -418,26 +423,28 @@ bool jnp1::poset_test(unsigned long id, char const *value1, char const *value2) 
         return true;
     }
 
-    if(are_elements_related(poset.second, element_id1.value(), element_id2.value())){
-        log_debug("poset_test: poset ", id, ", element \"", value1, "\" or \"", value2 , "\" exists");
-        return true;
-    } else {
+    if (!are_elements_related(poset.second, element_id1.value(), element_id2.value())) {
         log_debug("poset_test: poset ", id, ", element \"", value1, "\" or \"", value2 , "\" does not exist");
         return false;
     }
+    log_debug("poset_test: poset ", id, ", element \"", value1, "\" or \"", value2 , "\" exists");
+
+    return true;
 }
 
 void jnp1::poset_clear(unsigned long id) {
     log_debug("poset_clear(", id, ")");
+
     auto poset_opt = get_poset(id);
-    if (poset_opt.has_value()) {
-        poset_t& poset = poset_opt.value().get();
-
-        poset.first.clear();
-        poset.second.clear();
-
-        log_debug("poset_clear: poset ", id, " cleared");
-    } else {
+    if (!poset_opt.has_value()) {
         log_debug("poset_clear: poset ", id, " does not exist");
+        return;
     }
+
+    poset_t& poset = poset_opt.value().get();
+
+    poset.first.clear();
+    poset.second.clear();
+
+    log_debug("poset_clear: poset ", id, " cleared");
 }
