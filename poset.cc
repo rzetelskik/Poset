@@ -126,10 +126,11 @@ namespace {
         related_elements_t& element2_successors = it2->second.second;
 
         for (element_id_t el1_pred: element1_predecessors) {
-            add_relation(poset_graph, el1_pred, element2_id);
             for (element_id_t el2_succ: element2_successors) {
                 add_relation(poset_graph, el1_pred, el2_succ);
             }
+
+            add_relation(poset_graph, el1_pred, element2_id);
         }
 
         for (element_id_t el2_succ: element2_successors) {
