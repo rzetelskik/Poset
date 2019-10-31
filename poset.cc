@@ -1,4 +1,5 @@
 #include "poset.h"
+#include <iostream>
 #include <vector>
 #include <string>
 #include <unordered_set>
@@ -20,7 +21,7 @@ namespace {
     }
 #endif
 
-    using poset_id_t = unsigned long;
+    using poset_id_t = unsigned long long   ;
     using element_id_t = unsigned long long;
     using related_elements_t = std::unordered_set<element_id_t>;
     using dictionary_t = std::unordered_map<std::string, element_id_t>;
@@ -55,8 +56,7 @@ namespace {
 
     poset_id_t get_new_poset_id() {
         static poset_id_t id = 0;
-        id++;
-        return id;
+        return id++;
     }
 
     element_id_t get_new_element_id() {
@@ -273,7 +273,7 @@ bool jnp1::poset_remove(unsigned long id, char const *value) {
 
     auto poset_opt = get_poset(id);
     if (!poset_opt.has_value()) {
-        log_debug("poset_remove: poset ", id, " does not exis");
+        log_debug("poset_remove: poset ", id, " does not exist");
         return false;
     }
 
@@ -340,7 +340,7 @@ bool jnp1::poset_add(unsigned long id, char const *value1, char const *value2) {
     }
 
     add_relation_transitively(poset.second, element1_id.value(), element2_id.value());
-    log_debug("poset_add: poset ", id, ", relation (\"", value1, ",\" \"", value2 , "\") added");
+    log_debug("poset_add: poset ", id, ", relation (\"", value1, "\", \"", value2 , "\") added");
 
     return true;
 }
@@ -383,7 +383,7 @@ bool jnp1::poset_del(unsigned long id, char const *value1, char const *value2) {
     }
 
     remove_relation(poset.second, element1_id.value(), true, element2_id.value(), true);
-    log_debug("poset_del: poset ", id, ", relation (\"", value1, ",\" \"", value2 , "\") deleted");
+    log_debug("poset_del: poset ", id, ", relation (\"", value1, "\", \"", value2 , "\") deleted");
 
     return true;
 }
@@ -419,15 +419,15 @@ bool jnp1::poset_test(unsigned long id, char const *value1, char const *value2) 
         return false;
     }
     if (element_id1.value() == element_id2.value()) {
-        log_debug("poset_test: poset ", id, ", element \"", value1, "\" or \"", value2 , "\" exist");
+        log_debug("poset_test: poset ", id, ", relation (\"", value1, "\", \"", value2 , "\") exists");
         return true;
     }
 
     if (!are_elements_related(poset.second, element_id1.value(), element_id2.value())) {
-        log_debug("poset_test: poset ", id, ", element \"", value1, "\" or \"", value2 , "\" does not exist");
+        log_debug("poset_test: poset ", id, ", relation (\"", value1, "\", \"", value2 , "\") does not exist");
         return false;
     }
-    log_debug("poset_test: poset ", id, ", element \"", value1, "\" or \"", value2 , "\" exists");
+    log_debug("poset_test: poset ", id, ", relation (\"", value1, "\", \"", value2 , "\") exists");
 
     return true;
 }
