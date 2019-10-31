@@ -11,9 +11,9 @@ namespace {
 
 #ifdef NDEBUG
     bool debug() {
-		static const bool debug = false;
-		return debug;
-	}
+        static const bool debug = false;
+        return debug;
+    }
 #else
     bool debug() {
         static const bool debug = true;
@@ -61,8 +61,7 @@ namespace {
 
     element_id_t get_new_element_id() {
         static element_id_t id = 0;
-        id++;
-        return id;
+        return id++;
     }
 
     bool is_cstring_valid(char const *value) {
@@ -141,7 +140,7 @@ namespace {
     }
 
     void remove_relation(poset_graph_t& poset_graph, element_id_t element1_id, bool erase_from_element1,
-                         element_id_t element2_id, bool erase_from_element2) {
+            element_id_t element2_id, bool erase_from_element2) {
         if (erase_from_element1) {
             auto it1 = poset_graph.find(element1_id);
             related_elements_t& element1_successors = it1->second.second;
@@ -303,7 +302,7 @@ bool jnp1::poset_remove(unsigned long id, char const *value) {
 
 bool jnp1::poset_add(unsigned long id, char const *value1, char const *value2) {
     log_debug("poset_add(", id, ", \"", (is_cstring_valid(value1) ? value1 : "NULL"), "\", \"",
-              (is_cstring_valid(value2) ? value2 : "NULL"), "\"", ")");
+            (is_cstring_valid(value2) ? value2 : "NULL"), "\"", ")");
 
     auto poset_opt = get_poset(id);
     if (!poset_opt.has_value()) {
